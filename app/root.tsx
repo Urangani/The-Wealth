@@ -8,9 +8,10 @@ import {
   Link,
   useLocation,
 } from "react-router";
-
+import { connectWS } from "./services/ws";
 import type { Route } from "./+types/root";
 import "./app.css";
+import { useEffect } from "react";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -60,7 +61,15 @@ export default function App() {
     { name: "Risk", path: "/risk" },
     { name: "Logs", path: "/logs" },
     { name: "Review", path: "/review" },
+    { name: "Account", path: "/account" },
+    { name: "Trading Panel", path: "/trade-panel" },
   ];
+
+
+    useEffect(() => {
+    connectWS();
+  }, []);
+
 
   return (
     <div className="flex h-screen">

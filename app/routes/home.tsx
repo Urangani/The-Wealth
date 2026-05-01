@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import { subscribe } from "../services/ws"
 export default function Home() {
   const [account, setAccount] = useState<any>(null);
   const [positions, setPositions] = useState<any[]>([]);
@@ -29,9 +29,6 @@ export default function Home() {
   };
 
 
-
-
-
   
   useEffect(() => {
     loadData();
@@ -39,11 +36,7 @@ export default function Home() {
 
   // ⚡ WebSocket for live price
 useEffect(() => {
-  const ws = new WebSocket("ws://127.0.0.1:8000/ws/market");
-
-  ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
-
+  const unsubscribe = subscribe((msg) => {
     switch (msg.type) {
       case "price":
         setPrice(msg.data);
@@ -56,14 +49,10 @@ useEffect(() => {
       case "positions":
         setPositions(msg.data);
         break;
-
-      case "error":
-        console.warn(msg.message);
-        break;
     }
-  };
+  });
 
-  return () => ws.close();
+  return unsubscribe;
 }, []);
 
   // 🟢 Open Trade

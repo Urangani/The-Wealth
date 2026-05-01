@@ -25,4 +25,13 @@ export default [
     path: "/review",
     file: "routes/review.tsx",
   },
+  {
+    path: "/account",
+    file: "routes/account.tsx",
+  },
+  {
+    path: "/trade-panel",
+    file: "routes/trade-panel.tsx",
+  },
+
 ] satisfies RouteConfig;
