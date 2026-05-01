@@ -1,36 +1,54 @@
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [account, setAccount] = useState<any>(null);
+  const [positions, setPositions] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:8000/account/summary")
+      .then(res => res.json())
+      .then(setAccount);
+
+    fetch("http://localhost:8000/trades/open")
+      .then(res => res.json())
+      .then(setPositions);
+  }, []);
+
+  if (!account) return <p>Loading...</p>;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      {/* Stats */}
+      {/* Account */}
       <div className="grid grid-cols-3 gap-4">
-        <Card title="Balance" value="$10,000" />
-        <Card title="Equity" value="$10,250" />
-        <Card title="Daily P/L" value="+$250" positive />
+        <Card title="Balance" value={account.balance} />
+        <Card title="Equity" value={account.equity} />
+        <Card title="Profit" value={account.profit} />
       </div>
 
-      {/* Open Trades */}
-      <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-        <h2 className="mb-3 font-medium">Open Positions</h2>
+      {/* Positions */}
+      <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
+        <h2 className="mb-3">Open Positions</h2>
 
         <table className="w-full text-sm">
-          <thead className="text-gray-400">
+          <thead>
             <tr>
-              <th className="text-left p-2">Pair</th>
-              <th className="text-left p-2">Type</th>
-              <th className="text-left p-2">Lot</th>
-              <th className="text-left p-2">P/L</th>
+              <th>Symbol</th>
+              <th>Type</th>
+              <th>Volume</th>
+              <th>P/L</th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-t border-gray-800">
-              <td className="p-2">EURUSD</td>
-              <td className="p-2 text-green-400">Buy</td>
-              <td className="p-2">0.10</td>
-              <td className="p-2 text-green-400">+120</td>
-            </tr>
+            {positions.map((p, i) => (
+              <tr key={i}>
+                <td>{p.symbol}</td>
+                <td>{p.type}</td>
+                <td>{p.volume}</td>
+                <td>{p.profit}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -38,25 +56,11 @@ export default function Home() {
   );
 }
 
-function Card({
-  title,
-  value,
-  positive,
-}: {
-  title: string;
-  value: string;
-  positive?: boolean;
-}) {
+function Card({ title, value }: any) {
   return (
     <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
       <p className="text-sm text-gray-400">{title}</p>
-      <p
-        className={`text-xl font-bold ${
-          positive ? "text-green-400" : "text-white"
-        }`}
-      >
-        {value}
-      </p>
+      <p className="text-xl font-bold">{value}</p>
     </div>
   );
 }
