@@ -41,16 +41,27 @@ export default function Home() {
 useEffect(() => {
   const ws = new WebSocket("ws://127.0.0.1:8000/ws/market");
 
-  ws.onopen = () => console.log("WS connected");
-
   ws.onmessage = (event) => {
-    console.log("RAW WS:", event.data);
-    setPrice(JSON.parse(event.data));
+    const msg = JSON.parse(event.data);
+
+    switch (msg.type) {
+      case "price":
+        setPrice(msg.data);
+        break;
+
+      case "account":
+        setAccount(msg.data);
+        break;
+
+      case "positions":
+        setPositions(msg.data);
+        break;
+
+      case "error":
+        console.warn(msg.message);
+        break;
+    }
   };
-
-  ws.onerror = (err) => console.log("WS error", err);
-
-  ws.onclose = () => console.log("WS closed");
 
   return () => ws.close();
 }, []);
