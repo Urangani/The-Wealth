@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { config } from "../config";
 
 export default function Journal() {
   const [trades, setTrades] = useState<any[]>([]);
@@ -9,7 +10,7 @@ export default function Journal() {
   // LOAD FROM BACKEND
   // ─────────────────────────────
   useEffect(() => {
-    fetch("http://localhost:8000/journal/trades")
+    fetch(`${config.apiBaseUrl}/journal/trades`)
       .then(res => res.json())
       .then(data => setTrades(data.data || []));
   }, []);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { subscribe } from "../services/ws"
+import { config } from "../config";
 export default function Home() {
   const [account, setAccount] = useState<any>(null);
   const [positions, setPositions] = useState<any[]>([]);
@@ -13,10 +14,10 @@ export default function Home() {
   // 📡 Fetch initial data
   const loadData = async () => {
     try {
-      const accRes = await fetch("http://localhost:8000/account/summary");
+      const accRes = await fetch(`${config.apiBaseUrl}/account/summary`);
       const accJson = await accRes.json();
 
-      const posRes = await fetch("http://localhost:8000/trades/open");
+      const posRes = await fetch(`${config.apiBaseUrl}/trades/open`);
       const posJson = await posRes.json();
 
       setAccount(accJson.data);
@@ -57,7 +58,7 @@ useEffect(() => {
 
   // 🟢 Open Trade
   const openTrade = async (type: "BUY" | "SELL") => {
-    await fetch("http://localhost:8000/trade/open", {
+    await fetch(`${config.apiBaseUrl}/trade/open`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -74,7 +75,7 @@ useEffect(() => {
 
   // 🔴 Close Trade
   const closeTrade = async (ticket: number) => {
-    await fetch("http://localhost:8000/trade/close", {
+    await fetch(`${config.apiBaseUrl}/trade/close`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

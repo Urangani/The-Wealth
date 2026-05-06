@@ -1,3 +1,19 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json /app/
+RUN npm ci
+
+COPY . /app
+
+RUN npm run build
+
+ENV PORT=3000
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]
+
 FROM node:20-alpine AS development-dependencies-env
 COPY . /app
 WORKDIR /app

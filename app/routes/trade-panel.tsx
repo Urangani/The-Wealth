@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { config } from "../config";
 
 export default function TradePanel() {
   const [symbol, setSymbol] = useState("EURUSD");
@@ -8,7 +9,7 @@ export default function TradePanel() {
     orderType: "BUY" | "SELL"
   ) => {
     await fetch(
-      "http://localhost:8000/trade/open",
+      `${config.apiBaseUrl}/trade/open`,
       {
         method: "POST",
         headers: {

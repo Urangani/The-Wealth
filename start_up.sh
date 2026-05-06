@@ -1,50 +1,25 @@
 #!/usr/bin/env bash
-# startup.sh - launch frontend + backend stack with venv and readiness checks
+# TheWealth local startup script
 
 set -e
 set -o pipefail
 
-# --- LOAD ENV CONFIG ---
-source "$(dirname "$0")/.env"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# --- FRONTEND ---
-echo "[INFO] Starting frontend (npm run dev)..."
-cd "$FRONTEND_PATH"
-npm run dev &
-FRONTEND_PID=$!
+if [ -f ".env" ]; then
+  # shellcheck disable=SC1091
+  source ".env"
+fi
 
-# --- BACKEND: Activate Python environment ---
-echo "[INFO] Activating Python environment..."
-source "$VENV_PATH/bin/activate"
+API_BASE="${VITE_API_BASE_URL:-http://localhost:8000}"
+WS_URL="${VITE_WS_URL:-ws://localhost:8000/ws/market}"
 
-# --- BACKEND: Start Wine server ---
-echo "[INFO] Starting Wine server..."
-wine server -p &
-WINE_SERVER_PID=$!
+export VITE_API_BASE_URL="$API_BASE"
+export VITE_WS_URL="$WS_URL"
 
-# --- BACKEND: MT5 bridge ---
-echo "[INFO] Starting MT5 Linux bridge via Wine..."
-export WINEPREFIX
-wine "$PYTHON_EXE" -m mt5linux &
-MT5_PID=$!
+echo "[INFO] Starting TheWealth dev server"
+echo "[INFO] API: ${VITE_API_BASE_URL}"
+echo "[INFO] WS:  ${VITE_WS_URL}"
 
-# --- BACKEND: Wait for MT5 bridge readiness ---
-echo "[INFO] Waiting for MT5 bridge to be ready on port $MT5_PORT..."
-until nc -z localhost $MT5_PORT; do
-    sleep 1
-done
-echo "[INFO] MT5 bridge is ready."
-
-# --- BACKEND: FastAPI server ---
-echo "[INFO] Starting FastAPI backend (Uvicorn)..."
-cd "$BACKEND_PATH"
-uvicorn main:app --reload &
-UVICORN_PID=$!
-
-# --- MONITOR ---
-echo "[INFO] Frontend PID: $FRONTEND_PID"
-echo "[INFO] Wine server PID: $WINE_SERVER_PID"
-echo "[INFO] MT5 bridge PID: $MT5_PID"
-echo "[INFO] Uvicorn PID: $UVICORN_PID"
-
-wait
+exec npm run dev

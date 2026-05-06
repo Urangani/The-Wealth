@@ -1,8 +1,22 @@
+import { useEffect, useState } from "react";
+import { config } from "../config";
+
 export default function Strategies() {
-  const strategies = [
-    { name: "London Breakout", enabled: true },
-    { name: "NY Reversal", enabled: false },
-  ];
+  const [strategies, setStrategies] = useState<any[]>([]);
+
+  const load = () =>
+    fetch(`${config.apiBaseUrl}/strategies`)
+      .then((r) => r.json())
+      .then((j) => setStrategies(j.data || []));
+
+  useEffect(() => {
+    load().catch(() => setStrategies([]));
+  }, []);
+
+  const toggle = async (id: string) => {
+    await fetch(`${config.apiBaseUrl}/strategies/${id}/toggle`, { method: "POST" });
+    await load();
+  };
 
   return (
     <div>
@@ -19,6 +33,7 @@ export default function Strategies() {
               className={`px-3 py-1 rounded ${
                 s.enabled ? "bg-green-600" : "bg-gray-700"
               }`}
+              onClick={() => toggle(s.id)}
             >
               {s.enabled ? "ON" : "OFF"}
             </button>

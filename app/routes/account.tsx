@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { config } from "../config";
 
 type Account = {
   balance: number;
@@ -16,7 +17,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:8000/account/summary")
+    fetch(`${config.apiBaseUrl}/account/summary`)
       .then((res) => res.json())
       .then((res) => {
         setAccount(res.data);
