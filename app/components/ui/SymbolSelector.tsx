@@ -107,11 +107,10 @@ export function SymbolSelector({ value, onChange, disabled = false, className = 
               key={sym}
               type="button"
               onMouseDown={() => select(sym)}
-              className={`w-full text-left px-4 py-2 text-sm font-mono transition-colors ${
-                sym === value
+              className={`w-full text-left px-4 py-2 text-sm font-mono transition-colors ${sym === value
                   ? "bg-emerald-500/20 text-emerald-300"
                   : "text-gray-200 hover:bg-white/5 hover:text-white"
-              }`}
+                }`}
             >
               {sym}
             </button>
