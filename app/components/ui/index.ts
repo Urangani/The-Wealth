@@ -5,3 +5,5 @@ export * from "./DataTable";
 export * from "./EmptyState";
 export * from "./ErrorState";
 export * from "./StatePanel";
+export * from "./NumberStepper";
+export * from "./SymbolSelector";

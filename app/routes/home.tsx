@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { subscribe, subscribeStatus } from "../services/ws";
 import { fetchApi } from "../services/api";
-import { PageHeader, MetricCard, SectionCard, DataTable, StatePanel, EmptyState } from "../components/ui";
+import { PageHeader, MetricCard, SectionCard, DataTable, StatePanel, EmptyState, NumberStepper, SymbolSelector } from "../components/ui";
 import type { Column } from "../components/ui";
 import { SparklineChart } from "../components/charts";
 import type { AccountSummary, Position } from "../types";
@@ -19,6 +19,7 @@ export default function Home() {
   
   // WS Status and Trade State
   const [wsStatus, setWsStatus] = useState<"connecting" | "open" | "closed" | "error">("connecting");
+  const [mt5Connected, setMt5Connected] = useState<boolean | null>(null);
   const [isTrading, setIsTrading] = useState(false);
   const [tradeMessage, setTradeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -67,6 +68,9 @@ export default function Home() {
           break;
         case "positions":
           setPositions(msg.data);
+          break;
+        case "status":
+          setMt5Connected(msg.data?.mt5_connected ?? null);
           break;
       }
     });
@@ -187,11 +191,15 @@ export default function Home() {
               <div className="flex items-center gap-2 text-xs font-medium">
                 <span className="text-gray-400 uppercase tracking-wider">Status:</span>
                 <span className={`px-2 py-1 rounded-full ${
-                  wsStatus === "open" ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30" : 
-                  wsStatus === "connecting" ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30" : 
-                  "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/30"
+                  wsStatus === "open" && mt5Connected !== false
+                    ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
+                    : wsStatus === "open" && mt5Connected === false
+                    ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30"
+                    : wsStatus === "connecting"
+                    ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30"
+                    : "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/30"
                 }`}>
-                  {wsStatus.toUpperCase()}
+                  {wsStatus === "open" && mt5Connected === false ? "MT5 OFFLINE" : wsStatus.toUpperCase()}
                 </span>
               </div>
             }
@@ -220,28 +228,21 @@ export default function Home() {
           <SectionCard title="Execute Trade">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-end gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-400 uppercase tracking-wider">Symbol</label>
-                  <input
-                    value={symbol}
-                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                    disabled={isTrading}
-                    className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-32 disabled:opacity-50"
-                  />
-                </div>
+                <SymbolSelector
+                  value={symbol}
+                  onChange={setSymbol}
+                  disabled={isTrading}
+                />
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-400 uppercase tracking-wider">Lot Size</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={lot}
-                    onChange={(e) => setLot(parseFloat(e.target.value))}
-                    disabled={isTrading}
-                    className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-24 disabled:opacity-50"
-                  />
-                </div>
+                <NumberStepper
+                  label="Lot Size"
+                  value={lot}
+                  onChange={setLot}
+                  step={0.01}
+                  min={0.01}
+                  max={100}
+                  disabled={isTrading}
+                />
 
                 <button
                   onClick={() => openTrade("BUY")}
