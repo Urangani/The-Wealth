@@ -33,5 +33,12 @@ export default [
     path: "/trade-panel",
     file: "routes/trade-panel.tsx",
   },
-
+  {
+    path: "/strategy-management",
+    file: "routes/strategy-management.tsx",
+  },
+  {
+    path: "/ai-management",
+    file: "routes/ai-management.tsx",
+  },
 ] satisfies RouteConfig;

@@ -1,34 +1,43 @@
 import { useEffect, useState } from "react";
-import { config } from "../config";
+import { PageHeader, MetricCard, StatePanel } from "../components/ui";
+import { fetchApi } from "../services/api";
 
 export default function Review() {
   const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = () => {
+    setLoading(true);
+    setError(null);
+    fetchApi<any>("review/summary")
+      .then((res) => {
+        setSummary(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    fetch(`${config.apiBaseUrl}/review/summary`)
-      .then((r) => r.json())
-      .then((j) => setSummary(j.data))
-      .catch(() => setSummary(null));
+    loadData();
   }, []);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Weekly Review</h1>
+    <div className="space-y-6">
+      <PageHeader title="Weekly Review" description="Summary of your trading performance over the last week." />
 
-      <div className="grid grid-cols-3 gap-4">
-        <Stat label="Trades" value={`${summary?.trades ?? "—"}`} />
-        <Stat label="Win Rate" value={`${(summary?.win_rate ?? 0).toFixed?.(1) ?? "—"}%`} />
-        <Stat label="Net P/L" value={`${summary?.net_pnl ?? "—"}`} />
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-      <p className="text-gray-400 text-sm">{label}</p>
-      <p className="text-lg font-bold">{value}</p>
+      <StatePanel isLoading={loading} error={error} onRetry={loadData}>
+        {summary && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard title="Trades" value={`${summary.trades ?? "—"}`} />
+            <MetricCard title="Win Rate" value={`${(summary.win_rate ?? 0).toFixed?.(1) ?? "—"}%`} />
+            <MetricCard title="Net P/L" value={`${summary.net_pnl ?? "—"}`} />
+          </div>
+        )}
+      </StatePanel>
     </div>
   );
 }

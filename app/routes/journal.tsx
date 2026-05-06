@@ -1,25 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { config } from "../config";
+import { PageHeader, MetricCard, DataTable, StatePanel, EmptyState, SectionCard } from "../components/ui";
+import { fetchApi } from "../services/api";
+import { Position } from "../types";
 
 export default function Journal() {
-  const [trades, setTrades] = useState<any[]>([]);
+  const [trades, setTrades] = useState<Position[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("ALL");
 
-  // ─────────────────────────────
-  // LOAD FROM BACKEND
-  // ─────────────────────────────
+  const loadData = () => {
+    setLoading(true);
+    setError(null);
+    fetchApi<Position[]>("journal/trades")
+      .then((res) => {
+        setTrades(res || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
-    fetch(`${config.apiBaseUrl}/journal/trades`)
-      .then(res => res.json())
-      .then(data => setTrades(data.data || []));
+    loadData();
   }, []);
 
-  // ─────────────────────────────
-  // FILTERED DATA
-  // ─────────────────────────────
   const filtered = useMemo(() => {
-    return trades.filter(t => {
+    return trades.filter((t) => {
       const matchPair = t.symbol?.toLowerCase().includes(search.toLowerCase());
 
       if (filter === "PROFIT") return matchPair && t.profit > 0;
@@ -29,13 +40,10 @@ export default function Journal() {
     });
   }, [trades, search, filter]);
 
-  // ─────────────────────────────
-  // SUMMARY METRICS
-  // ─────────────────────────────
   const summary = useMemo(() => {
     const total = trades.reduce((acc, t) => acc + (t.profit || 0), 0);
-    const wins = trades.filter(t => t.profit > 0).length;
-    const loss = trades.filter(t => t.profit < 0).length;
+    const wins = trades.filter((t) => t.profit > 0).length;
+    const loss = trades.filter((t) => t.profit < 0).length;
 
     return {
       total,
@@ -45,83 +53,67 @@ export default function Journal() {
     };
   }, [trades]);
 
+  const columns = [
+    { key: "symbol", header: "Pair", cell: (r: any) => r.symbol },
+    { key: "type", header: "Type", cell: (r: any) => r.type },
+    { key: "volume", header: "Volume", cell: (r: any) => r.volume },
+    { key: "open_price", header: "Open", cell: (r: any) => r.open_price },
+    { key: "close_price", header: "Close", cell: (r: any) => r.close_price ?? "-" },
+    { 
+      key: "profit", 
+      header: "P/L", 
+      cell: (r: any) => (
+        <span className={r.profit > 0 ? "text-emerald-400 font-medium" : r.profit < 0 ? "text-rose-400 font-medium" : ""}>
+          {r.profit ?? 0}
+        </span>
+      )
+    },
+    { key: "status", header: "Status", cell: (r: any) => r.status || "Closed" },
+  ];
+
   return (
     <div className="space-y-6">
+      <PageHeader 
+        title="Trade Journal" 
+        description="Review past trades and analyze your performance."
+      />
 
-      {/* HEADER */}
-      <h1 className="text-2xl font-semibold">Trade Journal</h1>
+      <StatePanel isLoading={loading} error={error} onRetry={loadData}>
+        {/* SUMMARY CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <MetricCard title="Total P/L" value={summary.total.toFixed(2)} trend={{ value: Math.abs(summary.total).toFixed(2), isPositive: summary.total >= 0 }} />
+          <MetricCard title="Win Rate" value={`${summary.winRate.toFixed(1)}%`} />
+          <MetricCard title="Trades" value={trades.length} />
+        </div>
 
-      {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card title="Total P/L" value={summary.total} />
-        <Card title="Win Rate" value={`${summary.winRate.toFixed(1)}%`} />
-        <Card title="Trades" value={trades.length} />
-      </div>
+        {/* FILTERS & TABLE */}
+        <SectionCard className="mt-6" bodyClassName="p-0">
+          <div className="flex gap-3 p-4 border-b border-white/5">
+            <input
+              placeholder="Search pair..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="ALL">All</option>
+              <option value="PROFIT">Profitable</option>
+              <option value="LOSS">Loss</option>
+            </select>
+          </div>
 
-      {/* FILTERS */}
-      <div className="flex gap-3">
-        <input
-          placeholder="Search pair..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg text-sm"
-        />
-
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg text-sm"
-        >
-          <option value="ALL">All</option>
-          <option value="PROFIT">Profitable</option>
-          <option value="LOSS">Loss</option>
-        </select>
-      </div>
-
-      {/* TABLE */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="text-gray-400 bg-gray-950">
-            <tr>
-              <th className="p-3 text-left">Pair</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Volume</th>
-              <th className="p-3 text-left">Open</th>
-              <th className="p-3 text-left">Close</th>
-              <th className="p-3 text-left">P/L</th>
-              <th className="p-3 text-left">Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.map((t, i) => (
-              <tr key={i} className="border-t border-gray-800 hover:bg-gray-800/40">
-                <td className="p-3">{t.symbol}</td>
-                <td className="p-3">{t.type}</td>
-                <td className="p-3">{t.volume}</td>
-                <td className="p-3">{t.open_price}</td>
-                <td className="p-3">{t.close_price ?? "-"}</td>
-                <td className={t.profit > 0 ? "p-3 text-green-400" : "p-3 text-red-400"}>
-                  {t.profit ?? 0}
-                </td>
-                <td className="p-3">{t.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────
-// CARD COMPONENT
-// ─────────────────────────────
-function Card({ title, value }: any) {
-  return (
-    <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-      <p className="text-sm text-gray-400">{title}</p>
-      <p className="text-xl font-bold">{value}</p>
+          <DataTable 
+            data={filtered} 
+            columns={columns} 
+            keyExtractor={(r: any, i) => r.ticket || i}
+            emptyState={<EmptyState title="No trades found" description="No trades match the current filters." />}
+          />
+        </SectionCard>
+      </StatePanel>
     </div>
   );
 }
