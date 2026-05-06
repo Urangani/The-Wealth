@@ -41,4 +41,8 @@ export default [
     path: "/ai-management",
     file: "routes/ai-management.tsx",
   },
+  {
+    path: "/calendar",
+    file: "routes/calendar.tsx",
+  },
 ] satisfies RouteConfig;

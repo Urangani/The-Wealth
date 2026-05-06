@@ -65,6 +65,7 @@ export default function App() {
     { name: "Trading Panel", path: "/trade-panel" },
     { name: "AI Management", path: "/ai-management" },
     { name: "Strategy Management", path: "/strategy-management" },
+    { name: "Calendar", path: "/calendar" },
   ];
 
 
