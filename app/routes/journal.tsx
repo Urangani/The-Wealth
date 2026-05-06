@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader, MetricCard, DataTable, StatePanel, EmptyState, SectionCard } from "../components/ui";
 import { fetchApi } from "../services/api";
-import { Position } from "../types";
+import type { Position } from "../types";
 
 export default function Journal() {
   const [trades, setTrades] = useState<Position[]>([]);
@@ -109,7 +109,7 @@ export default function Journal() {
           <DataTable 
             data={filtered} 
             columns={columns} 
-            keyExtractor={(r: any, i) => r.ticket || i}
+            keyExtractor={(r: any) => r.ticket} 
             emptyState={<EmptyState title="No trades found" description="No trades match the current filters." />}
           />
         </SectionCard>

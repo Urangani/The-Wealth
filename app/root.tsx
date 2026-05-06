@@ -63,10 +63,12 @@ export default function App() {
     { name: "Review", path: "/review" },
     { name: "Account", path: "/account" },
     { name: "Trading Panel", path: "/trade-panel" },
+    { name: "AI Management", path: "/ai-management" },
+    { name: "Strategy Management", path: "/strategy-management" },
   ];
 
 
-    useEffect(() => {
+  useEffect(() => {
     connectWS();
   }, []);
 
@@ -84,11 +86,10 @@ export default function App() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`block px-3 py-2 rounded-lg text-sm ${
-                  active
+                className={`block px-3 py-2 rounded-lg text-sm ${active
                     ? "bg-blue-600 text-white"
                     : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }`}
+                  }`}
               >
                 {item.name}
               </Link>

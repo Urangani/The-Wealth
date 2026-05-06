@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader, MetricCard, SectionCard, StatePanel } from "../components/ui";
 import { fetchApi } from "../services/api";
-import { AccountSummary } from "../types";
+import type { AccountSummary } from "../types";
 
 export default function AccountPage() {
   const [account, setAccount] = useState<AccountSummary | null>(null);

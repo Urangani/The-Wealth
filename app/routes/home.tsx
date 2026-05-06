@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { subscribe } from "../services/ws";
 import { fetchApi } from "../services/api";
 import { PageHeader, MetricCard, SectionCard, DataTable, StatePanel, EmptyState } from "../components/ui";
-import { AccountSummary, Position } from "../types";
+import type { AccountSummary, Position } from "../types";
 
 export default function Home() {
   const [account, setAccount] = useState<AccountSummary | null>(null);
