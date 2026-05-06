@@ -18,6 +18,8 @@ export interface Position {
   sl?: number;
   tp?: number;
   time?: string;
+  close_price?: number;
+  status?: string;
 }
 
 export interface TradeRequest {

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader, MetricCard, DataTable, StatePanel, EmptyState, SectionCard } from "../components/ui";
+import type { Column } from "../components/ui";
+import { DistributionChart } from "../components/charts";
 import { fetchApi } from "../services/api";
 import type { Position } from "../types";
 
@@ -53,22 +55,41 @@ export default function Journal() {
     };
   }, [trades]);
 
-  const columns = [
-    { key: "symbol", header: "Pair", cell: (r: any) => r.symbol },
-    { key: "type", header: "Type", cell: (r: any) => r.type },
-    { key: "volume", header: "Volume", cell: (r: any) => r.volume },
-    { key: "open_price", header: "Open", cell: (r: any) => r.open_price },
-    { key: "close_price", header: "Close", cell: (r: any) => r.close_price ?? "-" },
+  // Derived datasets for charts
+  const symbolDistribution = useMemo(() => {
+    const dist: Record<string, number> = {};
+    trades.forEach(t => {
+      dist[t.symbol] = (dist[t.symbol] || 0) + 1;
+    });
+    return Object.entries(dist).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [trades]);
+
+  const profitLossDistribution = useMemo(() => {
+    const wins = trades.filter(t => t.profit > 0).length;
+    const losses = trades.filter(t => t.profit < 0).length;
+    return [
+      { name: "Profitable", value: wins },
+      { name: "Losses", value: losses }
+    ].filter(d => d.value > 0);
+  }, [trades]);
+
+  const columns: Column<Position>[] = [
+    { key: "symbol", header: "Pair", sortable: true, cell: (r) => r.symbol },
+    { key: "type", header: "Type", sortable: true, cell: (r) => r.type },
+    { key: "volume", header: "Volume", sortable: true, cell: (r) => r.volume },
+    { key: "open_price", header: "Open", sortable: true, cell: (r) => r.open_price },
+    { key: "close_price", header: "Close", sortable: true, cell: (r) => r.close_price ?? "-" },
     { 
       key: "profit", 
       header: "P/L", 
-      cell: (r: any) => (
+      sortable: true,
+      cell: (r) => (
         <span className={r.profit > 0 ? "text-emerald-400 font-medium" : r.profit < 0 ? "text-rose-400 font-medium" : ""}>
           {r.profit ?? 0}
         </span>
       )
     },
-    { key: "status", header: "Status", cell: (r: any) => r.status || "Closed" },
+    { key: "status", header: "Status", sortable: true, cell: (r) => r.status || "Closed" },
   ];
 
   return (
@@ -85,6 +106,18 @@ export default function Journal() {
           <MetricCard title="Win Rate" value={`${summary.winRate.toFixed(1)}%`} />
           <MetricCard title="Trades" value={trades.length} />
         </div>
+
+        {/* CHARTS */}
+        {trades.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+            <SectionCard title="Trades by Symbol">
+              <DistributionChart data={symbolDistribution} nameKey="name" dataKey="value" />
+            </SectionCard>
+            <SectionCard title="Win / Loss Ratio">
+              <DistributionChart data={profitLossDistribution} nameKey="name" dataKey="value" colors={["#10b981", "#ef4444"]} />
+            </SectionCard>
+          </div>
+        )}
 
         {/* FILTERS & TABLE */}
         <SectionCard className="mt-6" bodyClassName="p-0">
@@ -109,7 +142,7 @@ export default function Journal() {
           <DataTable 
             data={filtered} 
             columns={columns} 
-            keyExtractor={(r: any) => r.ticket} 
+            keyExtractor={(r) => r.ticket} 
             emptyState={<EmptyState title="No trades found" description="No trades match the current filters." />}
           />
         </SectionCard>

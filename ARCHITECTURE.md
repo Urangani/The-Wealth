@@ -69,9 +69,19 @@ npm run build
 npm run start   # or your chosen production server command
 ```
 
-### Future Enhancements
+### Future Integration Roadmap
 
-- Centralize backend URLs and WebSocket endpoints in a typed config module driven by environment variables.
-- Implement robust WebSocket reconnection and error handling in `app/services/ws.ts`.
-- Wire risk, strategies, logs, and review routes to real backend APIs and expand test coverage for critical flows (trading, journal metrics, and account summaries).
+The application is architected to support deep analytics once the corresponding `TradeCore` endpoints are implemented. The following data contracts have been pre-defined:
+
+#### Data Requirements
+
+| Metric | Endpoint | Data Shape | Usage |
+|--------|----------|------------|-------|
+| **Equity History** | `/analytics/equity` | `EquityHistoryPoint[]` | Performance over time (Review/Account) |
+| **Drawdown** | `/analytics/drawdown` | `DrawdownPoint[]` | Risk utilization (Risk) |
+| **Symbol Performance** | `/analytics/performance` | `SymbolPerformance[]` | Asset breakdown (Journal) |
+| **Execution Latency** | `/analytics/latency` | `ExecutionLatency[]` | System health (Logs/Review) |
+
+#### Integration Strategy
+Each placeholder chart and component in the UI references a contract key defined in `app/types/chartContracts.ts`. Backend integration will follow a single-step mapping from the new API response to these interfaces, requiring minimal UI churn.
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { subscribe } from "../services/ws";
+import { subscribe, subscribeStatus } from "../services/ws";
 import { fetchApi } from "../services/api";
 import { PageHeader, MetricCard, SectionCard, DataTable, StatePanel, EmptyState } from "../components/ui";
+import type { Column } from "../components/ui";
+import { SparklineChart } from "../components/charts";
 import type { AccountSummary, Position } from "../types";
 
 export default function Home() {
@@ -14,8 +16,15 @@ export default function Home() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // WS Status and Trade State
+  const [wsStatus, setWsStatus] = useState<"connecting" | "open" | "closed" | "error">("connecting");
+  const [isTrading, setIsTrading] = useState(false);
+  const [tradeMessage, setTradeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // 📡 Fetch initial data
+  // Client-side equity history for sparkline
+  const [equityHistory, setEquityHistory] = useState<{ time: string; equity: number }[]>([]);
+
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -26,6 +35,10 @@ export default function Home() {
       ]);
       setAccount(accData);
       setPositions(posData || []);
+      
+      if (accData) {
+        setEquityHistory([{ time: new Date().toLocaleTimeString(), equity: accData.equity }]);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -35,17 +48,22 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    
+    const unsubscribeStatus = subscribeStatus((status) => {
+      setWsStatus(status);
+    });
 
-  // ⚡ WebSocket for live price
-  useEffect(() => {
-    const unsubscribe = subscribe((msg) => {
+    const unsubscribeData = subscribe((msg) => {
       switch (msg.type) {
         case "price":
           setPrice(msg.data);
           break;
         case "account":
           setAccount(msg.data);
+          setEquityHistory(prev => {
+            const next = [...prev, { time: new Date().toLocaleTimeString(), equity: msg.data.equity }];
+            return next.slice(-30); // Keep last 30 ticks
+          });
           break;
         case "positions":
           setPositions(msg.data);
@@ -53,23 +71,39 @@ export default function Home() {
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeStatus();
+      unsubscribeData();
+    };
   }, []);
 
-  // 🟢 Open Trade
   const openTrade = async (type: "BUY" | "SELL") => {
+    if (lot <= 0) {
+      setTradeMessage({ type: "error", text: "Lot size must be greater than 0" });
+      return;
+    }
+    if (!symbol) {
+      setTradeMessage({ type: "error", text: "Symbol is required" });
+      return;
+    }
+
+    setIsTrading(true);
+    setTradeMessage(null);
     try {
       await fetchApi("trade/open", {
         method: "POST",
         body: JSON.stringify({ symbol, lot, order_type: type }),
       });
-      loadData(); // refresh positions
+      setTradeMessage({ type: "success", text: `Successfully opened ${type} for ${symbol}` });
+      setTimeout(() => setTradeMessage(null), 3000);
+      loadData();
     } catch (err: any) {
-      console.error("Trade failed", err);
+      setTradeMessage({ type: "error", text: err.message || "Trade failed" });
+    } finally {
+      setIsTrading(false);
     }
   };
 
-  // 🔴 Close Trade
   const closeTrade = async (ticket: number) => {
     try {
       await fetchApi("trade/close", {
@@ -82,22 +116,24 @@ export default function Home() {
     }
   };
 
-  const columns = [
-    { key: "symbol", header: "Symbol", cell: (p: Position) => p.symbol },
+  const columns: Column<Position>[] = [
+    { key: "symbol", header: "Symbol", sortable: true, cell: (p) => p.symbol },
     { 
       key: "type", 
       header: "Type", 
-      cell: (p: Position) => (
+      sortable: true,
+      cell: (p) => (
         <span className={p.type === "BUY" ? "text-emerald-400 font-medium" : "text-rose-400 font-medium"}>
           {p.type}
         </span>
       ) 
     },
-    { key: "volume", header: "Volume", cell: (p: Position) => p.volume },
+    { key: "volume", header: "Volume", sortable: true, cell: (p) => p.volume },
     { 
       key: "profit", 
       header: "P/L", 
-      cell: (p: Position) => (
+      sortable: true,
+      cell: (p) => (
         <span className={p.profit >= 0 ? "text-emerald-400 font-medium" : "text-rose-400 font-medium"}>
           {p.profit}
         </span>
@@ -106,8 +142,9 @@ export default function Home() {
     { 
       key: "actions", 
       header: "", 
-      align: "right" as const,
-      cell: (p: Position) => (
+      align: "right",
+      sortable: false,
+      cell: (p) => (
         <button
           onClick={() => closeTrade(p.ticket)}
           className="rounded bg-rose-500/20 px-3 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-500/30"
@@ -127,19 +164,38 @@ export default function Home() {
 
       <StatePanel isLoading={loading && !account} error={error} onRetry={loadData}>
         {/* Account KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <MetricCard title="Balance" value={account?.balance ?? 0} />
-          <MetricCard title="Equity" value={account?.equity ?? 0} />
+          <MetricCard 
+            title="Equity" 
+            value={account?.equity ?? 0} 
+            icon={<SparklineChart data={equityHistory} dataKey="equity" height={36} color="#3b82f6" />}
+          />
           <MetricCard 
             title="Profit" 
             value={account?.profit ?? 0} 
             trend={{ value: Math.abs(account?.profit ?? 0).toFixed(2), isPositive: (account?.profit ?? 0) >= 0 }} 
           />
+          <MetricCard title="Margin Level" value={`${account?.margin_level ?? 0}%`} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           {/* Live Price */}
-          <SectionCard title="Live Market">
+          <SectionCard 
+            title="Live Market"
+            action={
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <span className="text-gray-400 uppercase tracking-wider">Status:</span>
+                <span className={`px-2 py-1 rounded-full ${
+                  wsStatus === "open" ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30" : 
+                  wsStatus === "connecting" ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30" : 
+                  "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/30"
+                }`}>
+                  {wsStatus.toUpperCase()}
+                </span>
+              </div>
+            }
+          >
             {price ? (
               <div className="flex items-center gap-6">
                 <p className="text-xl font-bold text-white">{price.symbol}</p>
@@ -162,40 +218,54 @@ export default function Home() {
 
           {/* Trade Panel */}
           <SectionCard title="Execute Trade">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Symbol</label>
-                <input
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value)}
-                  className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-32"
-                />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-gray-400 uppercase tracking-wider">Symbol</label>
+                  <input
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                    disabled={isTrading}
+                    className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-32 disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-gray-400 uppercase tracking-wider">Lot Size</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={lot}
+                    onChange={(e) => setLot(parseFloat(e.target.value))}
+                    disabled={isTrading}
+                    className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-24 disabled:opacity-50"
+                  />
+                </div>
+
+                <button
+                  onClick={() => openTrade("BUY")}
+                  disabled={isTrading || !symbol || lot <= 0}
+                  className="rounded-lg bg-emerald-500/20 px-5 py-2 font-medium text-emerald-400 transition hover:bg-emerald-500/30 ring-1 ring-inset ring-emerald-500/30 disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                >
+                  {isTrading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent"></div> : "BUY"}
+                </button>
+
+                <button
+                  onClick={() => openTrade("SELL")}
+                  disabled={isTrading || !symbol || lot <= 0}
+                  className="rounded-lg bg-rose-500/20 px-5 py-2 font-medium text-rose-400 transition hover:bg-rose-500/30 ring-1 ring-inset ring-rose-500/30 disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                >
+                  {isTrading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-400 border-t-transparent"></div> : "SELL"}
+                </button>
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Lot Size</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={lot}
-                  onChange={(e) => setLot(parseFloat(e.target.value))}
-                  className="bg-gray-900/50 border border-white/10 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-24"
-                />
-              </div>
-
-              <button
-                onClick={() => openTrade("BUY")}
-                className="rounded-lg bg-emerald-500/20 px-5 py-2 font-medium text-emerald-400 transition hover:bg-emerald-500/30 ring-1 ring-inset ring-emerald-500/30"
-              >
-                BUY
-              </button>
-
-              <button
-                onClick={() => openTrade("SELL")}
-                className="rounded-lg bg-rose-500/20 px-5 py-2 font-medium text-rose-400 transition hover:bg-rose-500/30 ring-1 ring-inset ring-rose-500/30"
-              >
-                SELL
-              </button>
+              
+              {/* Feedback messages */}
+              {tradeMessage && (
+                <div className={`px-3 py-2 rounded-lg text-sm font-medium ${tradeMessage.type === "success" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"}`}>
+                  {tradeMessage.text}
+                </div>
+              )}
             </div>
           </SectionCard>
         </div>

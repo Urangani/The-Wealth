@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PageHeader, MetricCard, StatePanel } from "../components/ui";
+import { PageHeader, MetricCard, StatePanel, SectionCard, EmptyState } from "../components/ui";
 import { fetchApi } from "../services/api";
 
 export default function Review() {
@@ -37,6 +37,15 @@ export default function Review() {
             <MetricCard title="Net P/L" value={`${summary.net_pnl ?? "—"}`} />
           </div>
         )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+           <SectionCard title="Historical Trends">
+              <EmptyState title="Future Integration" description="Weekly performance trends and historical signal analysis are planned for Phase D." />
+           </SectionCard>
+           <SectionCard title="Performance Signals">
+              <EmptyState title="Future Integration" description="Signal quality and execution latency reports will be available soon." />
+           </SectionCard>
+        </div>
       </StatePanel>
     </div>
   );

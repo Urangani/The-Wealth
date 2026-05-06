@@ -1,40 +1,60 @@
 import { useEffect, useState } from "react";
-import { config } from "../config";
+import { PageHeader, MetricCard, SectionCard, StatePanel, EmptyState } from "../components/ui";
+import { fetchApi } from "../services/api";
 
 export default function Risk() {
   const [limits, setLimits] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = () => {
+    setLoading(true);
+    setError(null);
+    fetchApi<any>("risk/limits")
+      .then((res) => {
+        setLimits(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    fetch(`${config.apiBaseUrl}/risk/limits`)
-      .then((r) => r.json())
-      .then((j) => setLimits(j.data))
-      .catch(() => setLimits(null));
+    loadData();
   }, []);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Risk Dashboard</h1>
+    <div className="space-y-6">
+      <PageHeader title="Risk Management" description="Monitor trading limits and risk utilization." />
 
-      <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-        <p className="text-gray-400 text-sm">Allowed Symbols</p>
-        <p className="text-sm text-gray-200">
-          {limits?.allowed_symbols?.join(", ") ?? "—"}
-        </p>
-      </div>
+      <StatePanel isLoading={loading} error={error} onRetry={loadData}>
+        {limits && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard title="Max Daily Loss" value={limits.max_daily_loss ?? "—"} className="border-rose-500/20" />
+            <MetricCard title="Max Open Trades" value={limits.max_open_trades ?? "—"} className="border-amber-500/20" />
+            <MetricCard title="Allowed Symbols" value={limits.allowed_symbols?.length ?? 0} />
+          </div>
+        )}
 
-      <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-        <p className="text-gray-400 text-sm">Max Daily Loss</p>
-        <p className="text-xl font-bold text-red-400">
-          {limits?.max_daily_loss ?? "—"}
-        </p>
-      </div>
-
-      <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
-        <p className="text-gray-400 text-sm">Max Open Trades</p>
-        <p className="text-xl font-bold text-yellow-400">
-          {limits?.max_open_trades ?? "—"}
-        </p>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+           <SectionCard title="Drawdown Trend">
+              <EmptyState title="Future Integration" description="Drawdown history tracking will be available in Phase D." />
+           </SectionCard>
+           <SectionCard title="Risk Utilization">
+              <EmptyState title="Future Integration" description="Real-time risk utilization metrics are planned." />
+           </SectionCard>
+        </div>
+        
+        {limits && (
+           <SectionCard title="Active Constraints" className="mt-6">
+              <div className="space-y-2">
+                 <p className="text-sm text-gray-400">Allowed symbols: <span className="text-gray-200">{limits.allowed_symbols?.join(", ")}</span></p>
+              </div>
+           </SectionCard>
+        )}
+      </StatePanel>
     </div>
   );
 }
