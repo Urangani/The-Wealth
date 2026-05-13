@@ -1,27 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { subscribe, subscribeStatus } from "../services/ws";
 import { fetchApi } from "../services/api";
-import { PageHeader, MetricCard, SectionCard, DataTable, StatePanel, EmptyState, NumberStepper, SymbolSelector } from "../components/ui";
+import { PageHeader, MetricCard, SectionCard, DataTable, StatePanel, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import { SparklineChart } from "../components/charts";
 import type { AccountSummary, Position } from "../types";
+import { Play, Power, PowerOff, Activity } from "lucide-react";
+
+interface StrategyItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+  description: string;
+}
 
 export default function Home() {
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [price, setPrice] = useState<any>(null);
-
-  const [symbol, setSymbol] = useState("EURUSD");
-  const [lot, setLot] = useState(0.1);
+  const [strategies, setStrategies] = useState<StrategyItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // WS Status and Trade State
+  // WS Status
   const [wsStatus, setWsStatus] = useState<"connecting" | "open" | "closed" | "error">("connecting");
   const [mt5Connected, setMt5Connected] = useState<boolean | null>(null);
-  const [isTrading, setIsTrading] = useState(false);
-  const [tradeMessage, setTradeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [runningStrategy, setRunningStrategy] = useState<string | null>(null);
 
   // Client-side equity history for sparkline
   const [equityHistory, setEquityHistory] = useState<{ time: string; equity: number }[]>([]);
@@ -30,12 +35,14 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const [accData, posData] = await Promise.all([
+      const [accData, posData, stratData] = await Promise.all([
         fetchApi<AccountSummary>("account/summary"),
-        fetchApi<Position[]>("trades/open")
+        fetchApi<Position[]>("trades/open"),
+        fetchApi<StrategyItem[]>("strategies")
       ]);
       setAccount(accData);
       setPositions(posData || []);
+      setStrategies(stratData || []);
       
       if (accData) {
         setEquityHistory([{ time: new Date().toLocaleTimeString(), equity: accData.equity }]);
@@ -81,30 +88,23 @@ export default function Home() {
     };
   }, []);
 
-  const openTrade = async (type: "BUY" | "SELL") => {
-    if (lot <= 0) {
-      setTradeMessage({ type: "error", text: "Lot size must be greater than 0" });
-      return;
-    }
-    if (!symbol) {
-      setTradeMessage({ type: "error", text: "Symbol is required" });
-      return;
-    }
-
-    setIsTrading(true);
-    setTradeMessage(null);
+  const toggleStrategy = async (id: string) => {
     try {
-      await fetchApi("trade/open", {
-        method: "POST",
-        body: JSON.stringify({ symbol, lot, order_type: type }),
-      });
-      setTradeMessage({ type: "success", text: `Successfully opened ${type} for ${symbol}` });
-      setTimeout(() => setTradeMessage(null), 3000);
-      loadData();
+      const updated = await fetchApi<StrategyItem>(`strategies/${id}/toggle`, { method: "POST" });
+      setStrategies((prev) => prev.map((s) => (s.id === id ? updated : s)));
     } catch (err: any) {
-      setTradeMessage({ type: "error", text: err.message || "Trade failed" });
+      console.error("Toggle failed", err);
+    }
+  };
+
+  const runStrategy = async (id: string) => {
+    setRunningStrategy(id);
+    try {
+      await fetchApi(`strategies/${id}/run`, { method: "POST" });
+    } catch (err: any) {
+      console.error("Run failed", err);
     } finally {
-      setIsTrading(false);
+      setRunningStrategy(null);
     }
   };
 
@@ -162,8 +162,8 @@ export default function Home() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Dashboard" 
-        description="Real-time market data and open position execution."
+        title="Command Center" 
+        description="Monitor system health, account performance, and active strategies."
       />
 
       <StatePanel isLoading={loading && !account} error={error} onRetry={loadData}>
@@ -183,101 +183,99 @@ export default function Home() {
           <MetricCard title="Margin Level" value={`${account?.margin_level ?? 0}%`} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          {/* Live Price */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+          {/* Live Price & Status */}
           <SectionCard 
-            title="Live Market"
+            title="Market Connectivity"
+            className="lg:col-span-1"
             action={
-              <div className="flex items-center gap-2 text-xs font-medium">
-                <span className="text-gray-400 uppercase tracking-wider">Status:</span>
-                <span className={`px-2 py-1 rounded-full ${
-                  wsStatus === "open" && mt5Connected !== false
-                    ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
-                    : wsStatus === "open" && mt5Connected === false
-                    ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30"
-                    : wsStatus === "connecting"
-                    ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30"
-                    : "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/30"
-                }`}>
-                  {wsStatus === "open" && mt5Connected === false ? "MT5 OFFLINE" : wsStatus.toUpperCase()}
-                </span>
+              <div className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                wsStatus === "open" && mt5Connected !== false
+                  ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
+                  : "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/30"
+              }`}>
+                {wsStatus === "open" && mt5Connected !== false ? "STABLE" : "DISCONNECTED"}
               </div>
             }
           >
             {price ? (
-              <div className="flex items-center gap-6">
-                <p className="text-xl font-bold text-white">{price.symbol}</p>
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider">Bid</span>
-                  <span className="font-mono text-emerald-400">{price.bid}</span>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xl font-black text-white">{price.symbol}</span>
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
+                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Live Tick</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider">Ask</span>
-                  <span className="font-mono text-rose-400">{price.ask}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold">Bid</span>
+                    <p className="font-mono text-lg text-emerald-400 font-bold">{price.bid}</p>
+                  </div>
+                  <div className="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold">Ask</span>
+                    <p className="font-mono text-lg text-rose-400 font-bold">{price.ask}</p>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3 text-gray-400">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-white"></div>
-                Waiting for price data...
+              <div className="py-8 flex flex-col items-center justify-center text-gray-500 gap-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-700 border-t-blue-500"></div>
+                <span className="text-xs font-medium">Synchronizing with MT5...</span>
               </div>
             )}
           </SectionCard>
 
-          {/* Trade Panel */}
-          <SectionCard title="Execute Trade">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-end gap-3">
-                <SymbolSelector
-                  value={symbol}
-                  onChange={setSymbol}
-                  disabled={isTrading}
-                />
-
-                <NumberStepper
-                  label="Lot Size"
-                  value={lot}
-                  onChange={setLot}
-                  step={0.01}
-                  min={0.01}
-                  max={100}
-                  disabled={isTrading}
-                />
-
-                <button
-                  onClick={() => openTrade("BUY")}
-                  disabled={isTrading || !symbol || lot <= 0}
-                  className="rounded-lg bg-emerald-500/20 px-5 py-2 font-medium text-emerald-400 transition hover:bg-emerald-500/30 ring-1 ring-inset ring-emerald-500/30 disabled:opacity-50 flex items-center justify-center min-w-[80px]"
-                >
-                  {isTrading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent"></div> : "BUY"}
-                </button>
-
-                <button
-                  onClick={() => openTrade("SELL")}
-                  disabled={isTrading || !symbol || lot <= 0}
-                  className="rounded-lg bg-rose-500/20 px-5 py-2 font-medium text-rose-400 transition hover:bg-rose-500/30 ring-1 ring-inset ring-rose-500/30 disabled:opacity-50 flex items-center justify-center min-w-[80px]"
-                >
-                  {isTrading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-400 border-t-transparent"></div> : "SELL"}
-                </button>
-              </div>
-              
-              {/* Feedback messages */}
-              {tradeMessage && (
-                <div className={`px-3 py-2 rounded-lg text-sm font-medium ${tradeMessage.type === "success" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"}`}>
-                  {tradeMessage.text}
+          {/* Active Strategies Panel */}
+          <SectionCard 
+            title="Active Strategies" 
+            className="lg:col-span-2"
+            bodyClassName="p-0"
+          >
+            <div className="divide-y divide-white/5 max-h-[280px] overflow-auto">
+              {strategies.length === 0 ? (
+                <div className="p-10 text-center">
+                  <p className="text-xs text-gray-500">No strategies configured.</p>
                 </div>
+              ) : (
+                strategies.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">{s.name}</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${s.enabled ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-gray-600"}`}></span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{s.description || "No description"}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => runStrategy(s.id)}
+                        disabled={!s.enabled || runningStrategy === s.id}
+                        className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 disabled:opacity-20 transition-all"
+                      >
+                        <Play className={`w-4 h-4 ${runningStrategy === s.id ? "animate-pulse" : ""}`} />
+                      </button>
+                      <button 
+                        onClick={() => toggleStrategy(s.id)}
+                        className={`p-2 rounded-lg transition-all ${s.enabled ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" : "bg-white/5 text-gray-500 hover:bg-white/10"}`}
+                      >
+                        {s.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </SectionCard>
         </div>
 
         {/* Positions */}
-        <SectionCard title="Open Positions" className="mt-6" bodyClassName="p-0">
+        <SectionCard title="Active Market Exposure" className="mt-6" bodyClassName="p-0">
           <DataTable 
             data={positions} 
             columns={columns} 
             keyExtractor={(p) => p.ticket} 
-            emptyState={<EmptyState title="No open positions" description="Execute a trade to see it here." />}
+            emptyState={<EmptyState title="No active exposure" description="The trading engine is currently idle." />}
           />
         </SectionCard>
       </StatePanel>

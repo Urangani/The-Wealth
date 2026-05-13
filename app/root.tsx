@@ -12,6 +12,20 @@ import { connectWS } from "./services/ws";
 import type { Route } from "./+types/root";
 import "./app.css";
 import { useEffect } from "react";
+import { 
+  LayoutDashboard, 
+  BookOpen, 
+  Settings2, 
+  ShieldAlert, 
+  Terminal, 
+  PieChart, 
+  User, 
+  Keyboard, 
+  BrainCircuit, 
+  Workflow, 
+  CalendarDays,
+  Gem
+} from "lucide-react";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -55,17 +69,16 @@ export default function App() {
   const location = useLocation();
 
   const nav = [
-    { name: "Dashboard", path: "/" },
-    { name: "Journal", path: "/journal" },
-    { name: "Strategies", path: "/strategies" },
-    { name: "Risk", path: "/risk" },
-    { name: "Logs", path: "/logs" },
-    { name: "Review", path: "/review" },
-    { name: "Account", path: "/account" },
-    { name: "Trading Panel", path: "/trade-panel" },
-    { name: "AI Management", path: "/ai-management" },
-    { name: "Strategy Management", path: "/strategy-management" },
-    { name: "Calendar", path: "/calendar" },
+    { name: "Dashboard", path: "/", icon: LayoutDashboard },
+    { name: "Calendar", path: "/calendar", icon: CalendarDays },
+    { name: "Trading Panel", path: "/trade-panel", icon: Keyboard },
+    { name: "Journal", path: "/journal", icon: BookOpen },
+    { name: "Risk", path: "/risk", icon: ShieldAlert },
+    { name: "Review", path: "/review", icon: PieChart },
+    { name: "AI Management", path: "/ai-management", icon: BrainCircuit },
+    { name: "Strategy Management", path: "/strategy-management", icon: Workflow },
+    { name: "Logs", path: "/logs", icon: Terminal },
+    { name: "Account", path: "/account", icon: User },
   ];
 
 
@@ -77,21 +90,26 @@ export default function App() {
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 border-r border-gray-800 p-5">
-        <h1 className="text-lg font-bold mb-6">The Wealth</h1>
+      <aside className="w-64 bg-gray-900 border-r border-gray-800 p-5 flex flex-col">
+        <div className="flex items-center gap-3 mb-8 px-2">
+          <Gem className="w-8 h-8 text-blue-500" />
+          <h1 className="text-xl font-black tracking-tight text-white uppercase italic">The Wealth</h1>
+        </div>
 
-        <nav className="space-y-2">
+        <nav className="space-y-1 flex-1">
           {nav.map((item) => {
             const active = location.pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`block px-3 py-2 rounded-lg text-sm ${active
-                    ? "bg-blue-600 text-white"
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${active
+                    ? "bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20"
                     : "text-gray-400 hover:bg-gray-800 hover:text-white"
                   }`}
               >
+                <Icon className={`w-4 h-4 ${active ? "text-blue-400" : "text-gray-500"}`} />
                 {item.name}
               </Link>
             );
@@ -100,8 +118,10 @@ export default function App() {
       </aside>
 
       {/* Content */}
-      <main className="flex-1 p-6 overflow-auto">
-        <Outlet />
+      <main className="flex-1 p-6 overflow-auto bg-gray-950">
+        <div className="max-w-7xl mx-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

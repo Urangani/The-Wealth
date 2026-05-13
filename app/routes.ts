@@ -10,12 +10,12 @@ export default [
     file: "routes/journal.tsx",
   },
   {
-    path: "/strategies",
-    file: "routes/strategies.tsx",
-  },
-  {
     path: "/risk",
     file: "routes/risk.tsx",
+  },
+  {
+    path: "/calendar",
+    file: "routes/calendar.tsx",
   },
   {
     path: "/logs",
@@ -24,10 +24,6 @@ export default [
   {
     path: "/review",
     file: "routes/review.tsx",
-  },
-  {
-    path: "/account",
-    file: "routes/account.tsx",
   },
   {
     path: "/trade-panel",
@@ -42,7 +38,7 @@ export default [
     file: "routes/ai-management.tsx",
   },
   {
-    path: "/calendar",
-    file: "routes/calendar.tsx",
+    path: "/account",
+    file: "routes/account.tsx",
   },
 ] satisfies RouteConfig;

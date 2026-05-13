@@ -10,11 +10,11 @@
   - `app/root.tsx`: Defines the HTML shell, layout, sidebar navigation, and initializes the WebSocket connection on mount.
   - `app/routes.ts`: File-based route configuration mapping URL paths to route components under `app/routes`.
 - **Feature routes**
-  - `app/routes/home.tsx`: Main dashboard (account summary, open trades, live price, and quick trade execution).
+  - `app/routes/home.tsx`: Command Center dashboard (account summary, active market exposure, live price status, and active strategy control).
   - `app/routes/trade-panel.tsx`: Focused trade entry panel.
   - `app/routes/account.tsx`: Detailed account metrics view.
   - `app/routes/journal.tsx`: Trade journal with filters and performance metrics.
-  - `app/routes/risk.tsx`, `app/routes/strategies.tsx`, `app/routes/logs.tsx`, `app/routes/review.tsx`: Analytics and control pages for risk, strategies, logs, and weekly review.
+  - `app/routes/risk.tsx`, `app/routes/logs.tsx`, `app/routes/review.tsx`: Analytics and control pages for risk, logs, and weekly review.
 - **Client services**
   - `app/services/ws.ts`: Manages the WebSocket connection to the `TradeCore` stream endpoint and broadcasts messages to subscribers.
   - A small configuration module (to be added) centralizes API and WebSocket base URLs for different environments.

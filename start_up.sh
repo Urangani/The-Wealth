@@ -12,8 +12,8 @@ if [ -f ".env" ]; then
   source ".env"
 fi
 
-API_BASE="${VITE_API_BASE_URL:-http://localhost:8000}"
-WS_URL="${VITE_WS_URL:-ws://localhost:8000/ws/market}"
+API_BASE="${VITE_API_BASE_URL:-http://localhost:8005}"
+WS_URL="${VITE_WS_URL:-ws://localhost:8005/ws/market}"
 
 export VITE_API_BASE_URL="$API_BASE"
 export VITE_WS_URL="$WS_URL"
