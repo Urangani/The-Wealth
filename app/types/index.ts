@@ -51,3 +51,30 @@ export interface AIModelStatus {
   accuracy: number;
   last_inference_time?: string;
 }
+
+export interface Candle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  range: [number, number];
+  wick: [number, number];
+  bullish: boolean;
+}
+
+export interface OpenPosition {
+  ticket: number;
+  symbol: string;
+  type: "BUY" | "SELL";
+  volume: number;
+  profit: number;
+  open_price?: number;
+}
+
+export type Timeframe = "M1" | "M5" | "M15" | "M30" | "H1" | "H4" | "D1";
+
+export const TIMEFRAMES: readonly Timeframe[] = ["M1", "M5", "M15", "M30", "H1", "H4", "D1"];
+
+export type TradingMode = "live" | "analysis" | "reports";
