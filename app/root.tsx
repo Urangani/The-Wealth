@@ -10,7 +10,8 @@ import {
   useNavigate,
 } from "react-router";
 import { connectWS } from "./services/ws";
-import { getAccessToken, clearAuth, fetchMe } from "./services/auth";
+import { getAccessToken, clearAuth, fetchMe, type BrokerAccount } from "./services/auth";
+import AccountSwitcher from "./components/auth/AccountSwitcher";
 import type { Route } from "./+types/root";
 import "./app.css";
 import { useEffect, useState } from "react";
@@ -68,6 +69,7 @@ export default function App() {
   const navigate = useNavigate();
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [activeAccount, setActiveAccount] = useState<BrokerAccount | null>(null);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -75,6 +77,7 @@ export default function App() {
       fetchMe()
         .then((state) => {
           setDisplayName(state.user?.display_name || "");
+          setActiveAccount(state.active_account);
           setAuthenticated(true);
         })
         .catch(() => {
@@ -110,10 +113,20 @@ export default function App() {
     return <Outlet />;
   }
 
-  return <AuthenticatedApp displayName={displayName} />;
+  return (
+    <AuthenticatedApp
+      displayName={displayName}
+      activeAccount={activeAccount}
+      onAccountSwitch={setActiveAccount}
+    />
+  );
 }
 
-function AuthenticatedApp({ displayName }: { displayName: string }) {
+function AuthenticatedApp({ displayName, activeAccount, onAccountSwitch }: {
+  displayName: string;
+  activeAccount: BrokerAccount | null;
+  onAccountSwitch: (acc: BrokerAccount) => void;
+}) {
   const location = useLocation();
 
   const nav = [
@@ -170,6 +183,10 @@ function AuthenticatedApp({ displayName }: { displayName: string }) {
         </nav>
 
         <div className="border-t border-gray-800 pt-4 px-2 space-y-3">
+          <AccountSwitcher
+            activeAccount={activeAccount}
+            onSwitch={onAccountSwitch}
+          />
           <div className="text-sm text-gray-400 truncate">
             {displayName || "User"}
           </div>
