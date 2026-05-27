@@ -66,10 +66,9 @@ const PUBLIC_PATHS = ["/login", "/register"];
 
 export default function App() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [activeAccount, setActiveAccount] = useState<BrokerAccount | null>(null);
+  const [tokenChecked, setTokenChecked] = useState(false);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -78,30 +77,18 @@ export default function App() {
         .then((state) => {
           setDisplayName(state.user?.display_name || "");
           setActiveAccount(state.active_account);
-          setAuthenticated(true);
+          connectWS();
         })
         .catch(() => {
           clearAuth();
-          setAuthenticated(false);
-        });
+        })
+        .finally(() => setTokenChecked(true));
     } else {
-      setAuthenticated(false);
+      setTokenChecked(true);
     }
   }, []);
 
-  useEffect(() => {
-    if (authenticated === false && !PUBLIC_PATHS.includes(location.pathname)) {
-      navigate("/login");
-    }
-  }, [authenticated, location.pathname, navigate]);
-
-  useEffect(() => {
-    if (authenticated) {
-      connectWS();
-    }
-  }, [authenticated]);
-
-  if (authenticated === null) {
+  if (!tokenChecked) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
@@ -109,7 +96,8 @@ export default function App() {
     );
   }
 
-  if (!authenticated) {
+  const isPublic = PUBLIC_PATHS.includes(location.pathname);
+  if (isPublic) {
     return <Outlet />;
   }
 

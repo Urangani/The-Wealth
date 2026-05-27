@@ -82,6 +82,22 @@ export default function LoginPage() {
               Register
             </Link>
           </p>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-800" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-gray-900 px-2 text-gray-500">or</span>
+            </div>
+          </div>
+
+          <Link
+            to="/"
+            className="block w-full text-center bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg py-2 text-sm font-medium transition-colors"
+          >
+            Continue as guest
+          </Link>
         </form>
       </div>
     </div>

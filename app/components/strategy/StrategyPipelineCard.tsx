@@ -16,9 +16,9 @@ export const StrategyPipelineCard: React.FC<StrategyPipelineCardProps> = ({
   const conf = strategy.confidenceScore ?? strategy.tracking?.confidenceScore ?? 0;
   
   return (
-    <button
+    <div
       onClick={() => onSelect(strategy.id)}
-      className="w-full text-left rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 hover:bg-white/[0.06] transition-colors group"
+      className="w-full text-left rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 hover:bg-white/[0.06] transition-colors group cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -57,6 +57,6 @@ export const StrategyPipelineCard: React.FC<StrategyPipelineCardProps> = ({
           Promote →
         </button>
       </div>
-    </button>
+    </div>
   );
 };

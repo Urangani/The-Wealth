@@ -1,4 +1,5 @@
 import { config } from "../config";
+import { getAccessToken } from "./auth";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -9,14 +10,19 @@ export class ApiError extends Error {
 
 export async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${config.apiBaseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const token = getAccessToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...options?.headers as Record<string, string>,
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   
   try {
     const response = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
+      headers,
     });
 
     const data = await response.json().catch(() => null);
