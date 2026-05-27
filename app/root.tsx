@@ -7,24 +7,26 @@ import {
   ScrollRestoration,
   Link,
   useLocation,
+  useNavigate,
 } from "react-router";
 import { connectWS } from "./services/ws";
+import { getAccessToken, clearAuth, fetchMe } from "./services/auth";
 import type { Route } from "./+types/root";
 import "./app.css";
-import { useEffect } from "react";
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Settings2, 
-  ShieldAlert, 
-  Terminal, 
-  PieChart, 
-  User, 
-  Keyboard, 
-  BrainCircuit, 
-  Workflow, 
+import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  BookOpen,
+  ShieldAlert,
+  Terminal,
+  PieChart,
+  User,
+  Keyboard,
+  BrainCircuit,
+  Workflow,
   CalendarDays,
-  Gem
+  Gem,
+  LogOut,
 } from "lucide-react";
 
 export const links: Route.LinksFunction = () => [
@@ -41,9 +43,6 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-//
-// ✅ KEEP THIS — this is what makes styles work
-//
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -62,10 +61,59 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-//
-// ✅ THIS is where your app UI goes
-//
+const PUBLIC_PATHS = ["/login", "/register"];
+
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [displayName, setDisplayName] = useState("");
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (token) {
+      fetchMe()
+        .then((state) => {
+          setDisplayName(state.user?.display_name || "");
+          setAuthenticated(true);
+        })
+        .catch(() => {
+          clearAuth();
+          setAuthenticated(false);
+        });
+    } else {
+      setAuthenticated(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authenticated === false && !PUBLIC_PATHS.includes(location.pathname)) {
+      navigate("/login");
+    }
+  }, [authenticated, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (authenticated) {
+      connectWS();
+    }
+  }, [authenticated]);
+
+  if (authenticated === null) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <Outlet />;
+  }
+
+  return <AuthenticatedApp displayName={displayName} />;
+}
+
+function AuthenticatedApp({ displayName }: { displayName: string }) {
   const location = useLocation();
 
   const nav = [
@@ -81,19 +129,19 @@ export default function App() {
     { name: "Account", path: "/account", icon: User },
   ];
 
-
-  useEffect(() => {
-    connectWS();
-  }, []);
-
+  const handleLogout = () => {
+    clearAuth();
+    window.location.href = "/login";
+  };
 
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
       <aside className="w-64 bg-gray-900 border-r border-gray-800 p-5 flex flex-col">
         <div className="flex items-center gap-3 mb-8 px-2">
           <Gem className="w-8 h-8 text-blue-500" />
-          <h1 className="text-xl font-black tracking-tight text-white uppercase italic">The Wealth</h1>
+          <h1 className="text-xl font-black tracking-tight text-white uppercase italic">
+            The Wealth
+          </h1>
         </div>
 
         <nav className="space-y-1 flex-1">
@@ -104,20 +152,37 @@ export default function App() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${active
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  active
                     ? "bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20"
                     : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                  }`}
+                }`}
               >
-                <Icon className={`w-4 h-4 ${active ? "text-blue-400" : "text-gray-500"}`} />
+                <Icon
+                  className={`w-4 h-4 ${
+                    active ? "text-blue-400" : "text-gray-500"
+                  }`}
+                />
                 {item.name}
               </Link>
             );
           })}
         </nav>
+
+        <div className="border-t border-gray-800 pt-4 px-2 space-y-3">
+          <div className="text-sm text-gray-400 truncate">
+            {displayName || "User"}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-400 transition-colors w-full"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
       </aside>
 
-      {/* Content */}
       <main className="flex-1 p-6 overflow-auto bg-gray-950">
         <div className="max-w-7xl mx-auto">
           <Outlet />
@@ -127,9 +192,6 @@ export default function App() {
   );
 }
 
-//
-// Leave this as-is
-//
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let message = "Oops!";
   let details = "An unexpected error occurred.";
